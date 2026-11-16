@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Liquid Launcher</string>
+    <string name="settings_name">Launcher</string>
+    <string name="badges_label">Liquid Launcher badges</string>
+</resources>
