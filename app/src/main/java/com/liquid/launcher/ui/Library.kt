@@ -108,18 +108,18 @@ private fun SearchCapsule(controller: HomeController, placeholder: String, modif
 
 @Composable
 private fun AppTile(controller: HomeController, entry: AppEntry, iconSize: Dp, cellW: Dp, label: Boolean = true, textColor: Color = Color.White) {
-    var bounds by remember { mutableStateOf(Rect.Zero) }
+    val bounds = remember { LayoutRef() }
     val badges = LocalBadges.current
     Column(
         Modifier.width(cellW).itemGestures(
             entry.key, false,
-            onTap = { controller.launch(entry, bounds) },
-            onLongPress = { controller.menu = MenuState(AppItem("lib:" + entry.key, entry.key), bounds, false, "__library__").also { controller.haptic() } },
+            onTap = { controller.launch(entry, bounds.rect()) },
+            onLongPress = { controller.menu = MenuState(AppItem("lib:" + entry.key, entry.key), bounds.rect(), false, "__library__").also { controller.haptic() } },
             onDragStart = {},
         ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(iconSize).onGloballyPositioned { bounds = it.boundsInRoot() }) {
+        Box(Modifier.size(iconSize).track(bounds)) {
             IconArt(rememberIconBundle(entry, iconSize), iconSize)
             if (LocalPrefs.current.badges) NotificationBadge(badges[entry.packageName] ?: 0, iconSize)
         }
@@ -230,14 +230,14 @@ fun SpotlightOverlay(controller: HomeController, metrics: GridMetrics) {
 @Composable
 private fun ResultRow(controller: HomeController, e: AppEntry, top: Boolean) {
     val spec = LocalTheme.current
-    var bounds by remember { mutableStateOf(Rect.Zero) }
+    val bounds = remember { LayoutRef() }
     val mod = if (top) Modifier.liquidGlass(controller.screenBackdrop, GlassShape.rounded(26.dp), spec.menuGlass.copy(frost = 0.05f, blur = 10.dp)) else Modifier
     Row(
-        Modifier.fillMaxWidth().then(mod).pressable({ controller.launch(e, bounds) }, 0.98f).padding(horizontal = 14.dp, vertical = if (top) 12.dp else 8.dp),
+        Modifier.fillMaxWidth().then(mod).pressable({ controller.launch(e, bounds.rect()) }, 0.98f).padding(horizontal = 14.dp, vertical = if (top) 12.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val s = if (top) 52.dp else 40.dp
-        Box(Modifier.size(s).onGloballyPositioned { bounds = it.boundsInRoot() }) { IconArt(rememberIconBundle(e, s), s) }
+        Box(Modifier.size(s).track(bounds)) { IconArt(rememberIconBundle(e, s), s) }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Txt(e.label, if (top) 18.sp else 16.sp, Color.White, FontWeight.Medium, maxLines = 1)
@@ -342,9 +342,9 @@ fun AppLibraryPage(controller: HomeController, metrics: GridMetrics) {
                         item(key = "h$c") { Txt(c.toString(), 15.sp, Color.White.copy(alpha = 0.6f), FontWeight.Bold, Modifier.padding(top = 10.dp, bottom = 4.dp, start = 4.dp)) }
                     }
                     item(key = e.key) {
-                        var bounds by remember { mutableStateOf(Rect.Zero) }
-                        Row(Modifier.fillMaxWidth().pressable({ controller.launch(e, bounds) }, 0.98f).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(40.dp).onGloballyPositioned { bounds = it.boundsInRoot() }) { IconArt(rememberIconBundle(e, 40.dp), 40.dp) }
+                        val bounds = remember { LayoutRef() }
+                        Row(Modifier.fillMaxWidth().pressable({ controller.launch(e, bounds.rect()) }, 0.98f).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(40.dp).track(bounds)) { IconArt(rememberIconBundle(e, 40.dp), 40.dp) }
                             Spacer(Modifier.width(14.dp))
                             Txt(e.label, 17.sp, Color.White, maxLines = 1)
                         }

@@ -132,7 +132,7 @@ fun HomeScreen(controller: HomeController, metrics: GridMetrics) {
                             scaleX = oneUiEditScale; scaleY = oneUiEditScale
                             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.42f)
                         },
-                        beyondViewportPageCount = 1,
+                        beyondViewportPageCount = 0,
                         key = { p ->
                             when {
                                 p < todayOffset -> "today"
@@ -304,21 +304,21 @@ fun AppCell(controller: HomeController, item: AppItem, page: Int, inDock: Boolea
     val prefs = LocalPrefs.current
     val entry = controller.app(item.appKey)
     val badges = LocalBadges.current
-    var cellPos by remember { mutableStateOf(Offset.Zero) }
-    var bounds by remember { mutableStateOf(Rect.Zero) }
+    val cellPos = remember { LayoutRef() }
+    val bounds = remember { LayoutRef() }
     val hover = controller.drag?.folderHover == item.id
     val edit = controller.editMode
     val iconPx = with(LocalDensity.current) { metrics.icon.roundToPx() }
     Column(
         Modifier.fillMaxWidth()
-            .onGloballyPositioned { cellPos = it.positionInRoot() }
+            .track(cellPos)
             .itemGestures(
                 item.id, edit,
-                onTap = { if (!edit && entry != null) controller.launch(entry, bounds) },
-                onLongPress = { controller.showMenu(item, bounds, inDock) },
+                onTap = { if (!edit && entry != null) controller.launch(entry, bounds.rect()) },
+                onLongPress = { controller.showMenu(item, bounds.rect(), inDock) },
                 onDragStart = { local ->
-                    val pointer = cellPos + local
-                    controller.startDrag(item, DragSource(page, inDock), pointer, pointer - bounds.topLeft, IntSize(iconPx, iconPx))
+                    val pointer = cellPos.pos() + local
+                    controller.startDrag(item, DragSource(page, inDock), pointer, pointer - bounds.rect().topLeft, IntSize(iconPx, iconPx))
                 },
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -326,7 +326,7 @@ fun AppCell(controller: HomeController, item: AppItem, page: Int, inDock: Boolea
         Spacer(Modifier.height(cellTopSpacing(inDock, metrics)))
         Box(
             Modifier.size(metrics.icon)
-                .onGloballyPositioned { bounds = it.boundsInRoot() }
+                .track(bounds)
                 .jiggle(edit, item.id)
         ) {
             if (hover) {
@@ -350,27 +350,27 @@ fun FolderCell(controller: HomeController, item: FolderItem, page: Int, inDock: 
     val spec = LocalTheme.current
     val prefs = LocalPrefs.current
     val badges = LocalBadges.current
-    var cellPos by remember { mutableStateOf(Offset.Zero) }
-    var bounds by remember { mutableStateOf(Rect.Zero) }
+    val cellPos = remember { LayoutRef() }
+    val bounds = remember { LayoutRef() }
     val hover = controller.drag?.folderHover == item.id
     val edit = controller.editMode
     val iconPx = with(LocalDensity.current) { metrics.icon.roundToPx() }
     Column(
         Modifier.fillMaxWidth()
-            .onGloballyPositioned { cellPos = it.positionInRoot() }
+            .track(cellPos)
             .itemGestures(
                 item.id, edit,
-                onTap = { controller.openFolder(item.id, bounds) },
-                onLongPress = { controller.showMenu(item, bounds, inDock) },
+                onTap = { controller.openFolder(item.id, bounds.rect()) },
+                onLongPress = { controller.showMenu(item, bounds.rect(), inDock) },
                 onDragStart = { local ->
-                    val pointer = cellPos + local
-                    controller.startDrag(item, DragSource(page, inDock), pointer, pointer - bounds.topLeft, IntSize(iconPx, iconPx))
+                    val pointer = cellPos.pos() + local
+                    controller.startDrag(item, DragSource(page, inDock), pointer, pointer - bounds.rect().topLeft, IntSize(iconPx, iconPx))
                 },
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(cellTopSpacing(inDock, metrics)))
-        Box(Modifier.size(metrics.icon).onGloballyPositioned { bounds = it.boundsInRoot() }.jiggle(edit, item.id)) {
+        Box(Modifier.size(metrics.icon).track(bounds).jiggle(edit, item.id)) {
             FolderTile(item, metrics.icon, hover)
             val count = item.apps.sumOf { k -> controller.app(k)?.let { badges[it.packageName] } ?: 0 }
             if (prefs.badges && !edit) NotificationBadge(count, metrics.icon)
@@ -387,32 +387,31 @@ fun FolderCell(controller: HomeController, item: FolderItem, page: Int, inDock: 
 fun WidgetCell(controller: HomeController, item: WidgetItem, page: Int, metrics: GridMetrics) {
     val spec = LocalTheme.current
     val prefs = LocalPrefs.current
-    var cellPos by remember { mutableStateOf(Offset.Zero) }
-    var bounds by remember { mutableStateOf(Rect.Zero) }
+    val cellPos = remember { LayoutRef() }
+    val bounds = remember { LayoutRef() }
     val edit = controller.editMode
     val hPad = (metrics.cellW - metrics.icon) / 2
     val bottomPad = metrics.cellH - metrics.iconTop - metrics.icon
-    val size = with(LocalDensity.current) { IntSize(bounds.width.toInt(), bounds.height.toInt()) }
     Box(
         Modifier.fillMaxSize()
-            .onGloballyPositioned { cellPos = it.positionInRoot() }
+            .track(cellPos)
             .itemGestures(
                 item.id, edit,
                 onTap = {},
-                onLongPress = { controller.showMenu(item, bounds, false) },
+                onLongPress = { controller.showMenu(item, bounds.rect(), false) },
                 onDragStart = { local ->
-                    val pointer = cellPos + local
-                    controller.startDrag(item, DragSource(page, false), pointer, pointer - bounds.topLeft, size)
+                    val pointer = cellPos.pos() + local
+                    bounds.rect().let { r -> controller.startDrag(item, DragSource(page, false), pointer, pointer - r.topLeft, IntSize(r.width.toInt(), r.height.toInt())) }
                 },
             )
     ) {
         Box(
             Modifier.padding(start = hPad, end = hPad, top = metrics.iconTop, bottom = bottomPad)
                 .fillMaxSize()
-                .onGloballyPositioned { bounds = it.boundsInRoot() }
+                .track(bounds)
                 .jiggle(edit, item.id)
         ) {
-            BuiltInWidget(item, Modifier.fillMaxSize()) { controller.showMenu(item, bounds, false) }
+            BuiltInWidget(item, Modifier.fillMaxSize()) { controller.showMenu(item, bounds.rect(), false) }
             if (edit) {
                 Box(Modifier.matchParentSize().pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } })
                 if (spec.style == ThemeStyle.IOS) DeleteBadge { controller.removeItem(item.id) }

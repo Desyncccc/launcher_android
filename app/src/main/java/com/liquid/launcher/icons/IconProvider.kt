@@ -37,7 +37,14 @@ class IconBundle(
 )
 
 class IconProvider(private val context: Context, private val packs: IconPackManager) {
-    private val cache = LruCache<String, IconBundle>(320)
+    private val cache = object : LruCache<String, IconBundle>((Runtime.getRuntime().maxMemory() / 6).toInt()) {
+        override fun sizeOf(key: String, value: IconBundle): Int {
+            fun b(i: ImageBitmap?) = if (i == null) 0 else i.width * i.height * 4
+            return b(value.full) + (if (value.fg !== value.full) b(value.fg) else 0) + b(value.mono)
+        }
+    }
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val loader = Dispatchers.IO.limitedParallelism(2)
     private val density = DisplayMetrics.DENSITY_XXXHIGH
 
     fun cached(key: String): IconBundle? = cache.get(key)
@@ -45,7 +52,7 @@ class IconProvider(private val context: Context, private val packs: IconPackMana
     fun clear() = cache.evictAll()
 
     suspend fun load(app: AppEntry, shapeFraction: Float, exponent: Float, sizePx: Int, pack: String): IconBundle =
-        withContext(Dispatchers.IO) {
+        withContext(loader) {
             val key = cacheKey(app.key, shapeFraction, exponent, sizePx, pack)
             cache.get(key) ?: render(app, shapeFraction, exponent, sizePx, pack).also { cache.put(key, it) }
         }

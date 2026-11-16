@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -89,7 +90,11 @@ fun Modifier.liquidGlass(
     style: GlassStyle = GlassStyle(),
     glow: GlassGlow? = null,
     progress: () -> Float = { 1f },
-): Modifier = this then LiquidGlassElement(backdrop, shape, style, glow, progress)
+): Modifier = this
+    // own RenderNode: re-rendering the glass doesn't force the parent (and every
+    // backdrop that contains it) to re-record
+    .graphicsLayer()
+    .then(LiquidGlassElement(backdrop, shape, style, glow, progress))
 
 private data class LiquidGlassElement(
     val backdrop: Backdrop,
@@ -174,8 +179,6 @@ private class LiquidGlassNode(
         val lum = backdrop.luminance?.invoke(Rect(pos, size)) ?: 0.45f
         val tint = resolveTint(style, env, lum)
         val outline = path(size, r, n)
-
-        drawShadow(outline, amount)
 
         if (Build.VERSION.SDK_INT >= 33 && env.liquidEnabled && GlassShader.shaderOrNull() != null) {
             drawLiquid(src, rel, r, n, tint, light, amount, env)

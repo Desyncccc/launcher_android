@@ -96,7 +96,9 @@ fun LauncherRoot(app: LauncherApp, controller: HomeController) {
 
         val view = LocalView.current
         val topLum = wallpaper?.luminance?.average(0f, 0f, 1f, 0.05f) ?: 0f
-        val overlay = controller.folder != null || controller.spotlight.value > 0.3f || controller.drawer.value > 0.3f
+        val overlay by remember {
+            androidx.compose.runtime.derivedStateOf { controller.folder != null || controller.spotlight.value > 0.3f || controller.drawer.value > 0.3f }
+        }
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
             WindowCompat.getInsetsController(window, view).apply {

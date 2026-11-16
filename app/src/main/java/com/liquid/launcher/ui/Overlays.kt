@@ -194,18 +194,18 @@ private fun FolderTitle(controller: HomeController, folder: FolderItem, modifier
 @Composable
 private fun FolderAppCell(controller: HomeController, folder: FolderItem, key: String, entry: com.liquid.launcher.data.AppEntry?, cellW: Dp, metrics: GridMetrics, textColor: Color) {
     val spec = LocalTheme.current
-    var bounds by remember { mutableStateOf(Rect.Zero) }
+    val bounds = remember { LayoutRef() }
     val badges = LocalBadges.current
     Column(
         Modifier.width(cellW).itemGestures(
             key + folder.id, false,
-            onTap = { if (entry != null) controller.launch(entry, bounds) },
-            onLongPress = { controller.menu = MenuState(AppItem("f:$key", key), bounds, false, folder.id).also { controller.haptic() } },
+            onTap = { if (entry != null) controller.launch(entry, bounds.rect()) },
+            onLongPress = { controller.menu = MenuState(AppItem("f:$key", key), bounds.rect(), false, folder.id).also { controller.haptic() } },
             onDragStart = {},
         ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(metrics.icon).onGloballyPositioned { bounds = it.boundsInRoot() }.jiggle(controller.editMode, key)) {
+        Box(Modifier.size(metrics.icon).track(bounds).jiggle(controller.editMode, key)) {
             IconArt(rememberIconBundle(entry, metrics.icon), metrics.icon)
             if (LocalPrefs.current.badges) NotificationBadge(entry?.let { badges[it.packageName] } ?: 0, metrics.icon)
             if (controller.editMode && spec.style == ThemeStyle.IOS) DeleteBadge { controller.removeFromFolder(folder.id, key) }

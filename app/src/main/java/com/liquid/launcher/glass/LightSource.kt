@@ -56,18 +56,23 @@ fun rememberTiltLight(enabled: Boolean): LightSource {
         var gy = 9.81f * 0.7f
         var refGy = Float.NaN
         var lastAngle = BASE_ANGLE
+        var lastUpdate = 0L
         val listener = object : SensorEventListener {
             override fun onSensorChanged(e: SensorEvent) {
-                gx += (e.values[0] - gx) * 0.12f
-                gy += (e.values[1] - gy) * 0.12f
+                gx += (e.values[0] - gx) * 0.08f
+                gy += (e.values[1] - gy) * 0.08f
                 if (refGy.isNaN()) refGy = gy
                 // slowly re-centre so the "rest" position follows how the phone is held
                 refGy += (gy - refGy) * 0.004f
                 val roll = (-gx / 9.81f).coerceIn(-1f, 1f)
                 val pitch = ((gy - refGy) / 9.81f).coerceIn(-1f, 1f)
                 val a = BASE_ANGLE + roll * 1.35f + pitch * 0.8f
-                if (abs(a - lastAngle) > 0.012f) {
+                // Every light change re-renders all glass, so only react to a real tilt (~3°)
+                // and never more than ~12 times a second.
+                val now = e.timestamp
+                if (abs(a - lastAngle) > 0.055f && now - lastUpdate > 80_000_000L) {
                     lastAngle = a
+                    lastUpdate = now
                     light.direction = Offset(cos(a), sin(a))
                 }
             }

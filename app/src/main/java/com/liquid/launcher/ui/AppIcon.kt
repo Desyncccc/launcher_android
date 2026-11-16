@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -115,27 +116,32 @@ fun darkTone(): Boolean {
 @Composable
 fun BoxScope.SpecularRim(shape: GlassShape, strength: Float = 1f) {
     val light = LocalLightSource.current
-    Canvas(Modifier.matchParentSize()) {
-        val r = shape.radiusPx(size, this)
-        val path = continuousPath(size.width, size.height, r, shape.effectiveExponent)
-        val dir = light.direction
-        val ext = size.maxDimension * 0.5f
-        val c = center
-        val w = 1.1.dp.toPx() * 2f
-        clipPath(path) {
-            drawPath(
-                path,
-                Brush.linearGradient(
-                    0f to Color.White.copy(alpha = 0.62f * strength),
-                    0.32f to Color.White.copy(alpha = 0.10f * strength),
-                    0.68f to Color.White.copy(alpha = 0.06f * strength),
-                    1f to Color.White.copy(alpha = 0.40f * strength),
-                    start = c + Offset(dir.x * ext, dir.y * ext), end = c - Offset(dir.x * ext, dir.y * ext),
-                ),
-                style = Stroke(w),
-            )
+    Spacer(
+        Modifier.matchParentSize().graphicsLayer().drawWithCache {
+            // geometry is cached per size; only the gradient direction changes with the light
+            val r = shape.radiusPx(size, this)
+            val path = continuousPath(size.width, size.height, r, shape.effectiveExponent)
+            val ext = size.maxDimension * 0.5f
+            val c = Offset(size.width / 2f, size.height / 2f)
+            val stroke = Stroke(1.1.dp.toPx() * 2f)
+            onDrawBehind {
+                val dir = light.direction
+                clipPath(path) {
+                    drawPath(
+                        path,
+                        Brush.linearGradient(
+                            0f to Color.White.copy(alpha = 0.62f * strength),
+                            0.32f to Color.White.copy(alpha = 0.10f * strength),
+                            0.68f to Color.White.copy(alpha = 0.06f * strength),
+                            1f to Color.White.copy(alpha = 0.40f * strength),
+                            start = c + Offset(dir.x * ext, dir.y * ext), end = c - Offset(dir.x * ext, dir.y * ext),
+                        ),
+                        style = stroke,
+                    )
+                }
+            }
         }
-    }
+    )
 }
 
 /** The icon artwork in the selected Home Screen appearance (Default / Dark / Clear / Tinted). */
@@ -267,7 +273,7 @@ fun Modifier.jiggle(enabled: Boolean, seed: String): Modifier {
 
 @Composable
 fun MiniIcon(entry: AppEntry?, size: Dp) {
-    val bundle = rememberIconBundle(entry, 64.dp)
+    val bundle = rememberIconBundle(entry, LocalHome.current.metrics?.icon ?: 60.dp)
     val prefs = LocalPrefs.current
     val shape = LocalTheme.current.iconShape
     Box(Modifier.size(size)) {
